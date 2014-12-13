@@ -9,19 +9,19 @@ final class Praticien extends ObjetMetier
     private $_S_prenom;
 
     // Mes mutateurs (setters)
-    public function changeIdentifiant ($identifiant)
+    public function changeIdentifiant ($I_identifiant)
     {
-        $this->_I_identifiant = $identifiant;
+        $this->_I_identifiant = $I_identifiant;
     }
 
-    public function changeNom ($nom)
+    public function changeNom ($S_nom)
     {
-        $this->_S_nom = $nom;
+        $this->_S_nom = $S_nom;
     }
 
-    public function changePrenom ($prenom)
+    public function changePrenom ($S_prenom)
     {
-        $this->_S_prenom = $prenom;
+        $this->_S_prenom = $S_prenom;
     }
 
     // Mes accesseurs (getters)

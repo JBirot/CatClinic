@@ -11,24 +11,24 @@ final class Chat extends ObjetMetier
     private $_S_nom;
 
     // Mes mutateurs (setters)
-    public function changeIdentifiant ($identifiant)
+    public function changeIdentifiant ($S_identifiant)
     {
-        $this->_I_identifiant = $identifiant;
+        $this->_I_identifiant = $S_identifiant;
     }
 
-    public function changeAge ($age)
+    public function changeAge ($I_age)
     {
-        $this->_I_age = $age;
+        $this->_I_age = $I_age;
     }
 
-    public function changeNom ($nom)
+    public function changeNom ($S_nom)
     {
-        $this->_S_nom = $nom;
+        $this->_S_nom = $S_nom;
     }
 
-    public function changeTatouage ($tatouage)
+    public function changeTatouage ($S_tatouage)
     {
-        $this->_S_tatouage = $tatouage;
+        $this->_S_tatouage = $S_tatouage;
     }
 
     // Mes accesseurs (getters)

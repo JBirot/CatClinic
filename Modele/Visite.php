@@ -15,24 +15,24 @@ final class Visite  extends ObjetMetier
     private $_O_chat;
 
     // Mes mutateurs (setters)
-    public function changeIdentifiant ($identifiant)
+    public function changeIdentifiant ($I_identifiant)
     {
-        $this->_I_identifiant = $identifiant;
+        $this->_I_identifiant = $I_identifiant;
     }
 
-    public function changePrix ($prix)
+    public function changePrix ($F_prix)
     {
-        $this->_F_prix = $prix;
+        $this->_F_prix = $F_prix;
     }
 
-    public function changeDate (DateTime $date)
+    public function changeDate (DateTime $O_date)
     {
-        $this->_O_date = $date;
+        $this->_O_date = $O_date;
     }
 
-    public function changeObservations ($observations)
+    public function changeObservations ($S_observations)
     {
-        $this->_S_observations = $observations;
+        $this->_S_observations = $S_observations;
     }
 
     public function changePraticien (Praticien $O_praticien)

@@ -13,24 +13,24 @@ final class Utilisateur extends ObjetMetier
     private $_O_proprietaire = null;
 
     // Mes mutateurs (setters)
-    public function changeIdentifiant ($identifiant)
+    public function changeIdentifiant ($I_identifiant)
     {
-        $this->_I_identifiant = $identifiant;
+        $this->_I_identifiant = $I_identifiant;
     }
 
-    public function changeLogin ($login)
+    public function changeLogin ($S_login)
     {
-        $this->_S_login = $login;
+        $this->_S_login = $S_login;
     }
 
-    public function changeMotDePasse ($motPasse)
+    public function changeMotDePasse ($S_motPasse)
     {
-        $this->_S_motPasse = $motPasse;
+        $this->_S_motPasse = $S_motPasse;
     }
 
-    public function changeAdmin ($admin)
+    public function changeAdmin ($I_admin)
     {
-        $this->_I_admin = $admin;
+        $this->_I_admin = $I_admin;
     }
 
     public function changeProprietaire (Proprietaire $O_proprietaire = null)
