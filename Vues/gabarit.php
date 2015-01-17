@@ -2,15 +2,21 @@
 <html lang="fr"> 
 <head> 
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <link rel="stylesheet" type="text/css" href="/Ressources/Public/css/main.css" />
+    <link rel="stylesheet" type="text/css" href="/Ressources/Public/css/foundation.min.css" />
+    <link rel="stylesheet" type="text/css" href="/Ressources/Public/css/MyCSS.css" />
     <title>Cat Clinic - Console de gestion</title>
 </head>
 <body>
-    <div id="header"><?php Vue::montrer('standard/entete'); ?></div>
+    <header><?php Vue::montrer('standard/entete'); ?></header>
     <div id="messages"><?php Vue::montrer('standard/erreurs'); ?></div>
-    <div id="body">
+    <div>
        <?php echo $A_vue['body'] ?>
     </div>
-    <div id="footer"><?php Vue::montrer('standard/pied'); ?></div>
+    <footer id="footer"><?php Vue::montrer('standard/pied'); ?></footer>
+    
+    <script src="/Ressources/Public/js/vendor/jquery.js"></script>
+    <script src="/Ressources/Public/js/foundation.min.js"></script>
+    <script>$(document).foundation();</script>
+    
 </body>
 </html>
