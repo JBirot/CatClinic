@@ -13,6 +13,39 @@ final class Authentification
         return self::estConnecte() && BoiteAOutils::recupererDepuisSession('utilisateur')->estAdministrateur();
     }
     
+    public static function accesAdministrateur($S_url = '')
+    {
+    	//Redirigera vers l'accueil avec un message d'erreur, tout utilisateur qui n'est pas administrateur
+    	if(!self::estAdministrateur())
+    	{
+    		BoiteAOutils::stockerErreur("Vous n'êtes pas administrateur.");
+    		BoiteAOutils::redirigerVers($S_url);
+    		exit;
+    	}
+    }
+    
+    public static function accesNonConnecte($S_url = '')
+    {
+    	//Redirige sur la page par défaut si l'utilisateur est connecté
+    	if(self::estConnecte())
+    	{
+    		BoiteAOutils::stockerErreur("Vous ne pouvez pas accéder à cette page en étant connecté.");
+    		BoiteAOutils::redirigerVers($S_url);
+    		exit;
+    	}
+    }
+    
+    public static function accesConnecte($S_url = '')
+    {
+    	//Redirige l'utilisateur s'il n'est pas connecté
+    	if(!self::estConnecte())
+    	{
+    		BoiteAOutils::stockerErreur("Vous devez être connecté pour accéder à cette page.");
+    		BoiteAOutils::redirigerVers($S_url);
+    		exit;
+    	}
+    }
+    
     public static function authentifier (Utilisateur $O_utilisateur, $S_motdePasse, $S_algorithme = 'sha1')
     {
         $O_authentificateur = self::fabrique($S_algorithme);

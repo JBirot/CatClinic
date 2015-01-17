@@ -39,7 +39,7 @@ final class Paginateur implements PaginateurInterface {
 
                 if ($this->_I_pageCourante != $i)
                 {
-                    $A_pagination[$i] = $S_controleurCible . '/paginer/' . $i;
+                    $A_pagination[$i] = $S_controleurCible . '/liste/' . $i;
                 }
             }
         }
@@ -53,12 +53,23 @@ final class Paginateur implements PaginateurInterface {
         {
             throw new InvalidArgumentException('Le numéro de page ' . $I_numeroPage . ' est invalide');
         }
+        
+        if ($I_numeroPage > $this->nbPages() && $I_numeroPage != 1)
+        {
+        	$I_numeroPage = $this->nbPages() == 0 ? 1 : $this->nbPages();
+        }
 
         $this->_I_pageCourante = $I_numeroPage;
-
+	
         $I_indexDebut = $I_numeroPage == 1 ? 0 : (($I_numeroPage - 1) * $this->_I_limite);
-
+		
         return $this->_O_listeur->lister($I_indexDebut, $this->_I_limite);
+    }
+    
+    public function nbPages()
+    {
+    	$I_nbEnregistrements = $this->_O_listeur->recupererNbEnregistrements();
+    	return ($I_nbEnregistrements/$this->_I_limite); 
     }
 
 }

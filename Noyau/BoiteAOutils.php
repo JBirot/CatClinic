@@ -44,6 +44,11 @@ final class BoiteAOutils
         self::rangerDansSession('erreur', $S_erreur);
     }
     
+    public static function stockerMessage($S_message)
+    {
+    	self::rangerDansSession('message', $S_message);
+    }
+    
     public static function redirigerVers ($S_url)
     {
         $S_url = '/' . strtolower($S_url);

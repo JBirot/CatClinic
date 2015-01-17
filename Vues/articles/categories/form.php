@@ -1,9 +1,7 @@
-<?php
-?>
 <section>
-	<h1>Créer une catégorie</h1>
-	<form method="post" action="articles/categories/valider">
-		<label>Catégorie</label><input type="text" />
-		<input type="submit" value="Créer" />
+	<h1>CrÃ©er une catÃ©gorie</h1>
+	<form method="post" action="/categorie/creer">
+		<label for="categorie_nouveau_titre">CatÃ©gorie</label><input type="text" name="categorie_nouveau_titre" />
+		<input type="submit" value="CrÃ©er" />
 	</form>
 </section>

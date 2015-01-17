@@ -2,6 +2,11 @@
 
 final class ControleurLogin
 {
+	public function __construct()
+	{
+		Authentification::accesNonConnecte();	
+	}
+	
     public function defautAction()
     {
         Vue::montrer('login/form');

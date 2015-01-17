@@ -5,12 +5,12 @@ class UtilisateurMapper extends SqlDataMapper
     public function __construct(Connexion $O_connexion)
     {
         parent::__construct(Constantes::TABLE_UTILISATEUR);
-        $this->_S_classeMappee = 'Utilisateur';
+        $this->_S_classeMappee = 'utilisateur';
         $this->_O_connexion = $O_connexion;
     }
 
     public function trouverParIntervalle ($I_debut, $I_fin) {
-        $S_requete = 'SELECT id, login, admin FROM ' . $this->_S_nomTable;
+        $S_requete = 'SELECT id, login, motdepasse, admin FROM ' . $this->_S_nomTable;
 
         if (!is_null($I_debut) && !is_null($I_fin))
         {
@@ -24,16 +24,13 @@ class UtilisateurMapper extends SqlDataMapper
         foreach ($this->_O_connexion->projeter($S_requete, $A_paramsRequete) as $O_utilisateurEnBase)
         {
             // $O_utilisateurEnBase est un objet de la classe prédéfinie StdClass
-
-            $O_utilisateur = new Utilisateur ();
-
-            // Je convertis mon objet StdClass trop "vague" en objet métier Utilisateur !
-            $O_utilisateur->changeIdentifiant($O_utilisateurEnBase->id);
-            $O_utilisateur->changeLogin ($O_utilisateurEnBase->login);
-            $O_utilisateur->changeAdmin ($O_utilisateurEnBase->admin);
-
-            // A ce stade j'ai réalisé en quelque sorte une copie de mon objet StdClass en un objet métier de mon application
-            $A_utilisateurs[] = $O_utilisateur;
+        	// Je convertis mon objet StdClass trop "vague" en objet métier Utilisateur !
+        	// TODO : si la classe mappée est incorrecte aucun message d'erreur n'est envoyé ici, seulement une variable vide.
+            if($O_utilisateur = $this->hydrater($O_utilisateurEnBase))
+            {
+            	// A ce stade j'ai réalisé en quelque sorte une copie de mon objet StdClass en un objet métier de mon application
+            	$A_utilisateurs[] = $O_utilisateur;
+            }
         }
 
         // J'ai (si des enregistrements existent, évidemment) crée un tableau d'objets Utilisateur...je le renvoie !
@@ -42,6 +39,10 @@ class UtilisateurMapper extends SqlDataMapper
 
     public function trouverParIdentifiant ($I_identifiant)
     {
+    	if(!isset($I_identifiant))
+    	{
+    		throw new Exception("L'identifiant d'un utilisateur ne peut être vide.");
+    	}
         $S_requete    = "SELECT id, login, motdepasse, admin FROM " . $this->_S_nomTable .
                         " WHERE id = ?";
         $A_paramsRequete = array($I_identifiant);
@@ -50,20 +51,16 @@ class UtilisateurMapper extends SqlDataMapper
         {
             // on sait donc qu'on aura 1 seul enregistrement dans notre tableau au max
             // c'est un objet de type stdClass
-            $O_utilisateurTemporaire = $A_utilisateur[0];
+            $O_utilisateurEnBase = $A_utilisateur[0];
 
-             if (is_object($O_utilisateurTemporaire)) {
-                if (class_exists($this->_S_classeMappee)) {
-                    $O_utilisateur = new $this->_S_classeMappee;
-                    $O_utilisateur->changeIdentifiant($O_utilisateurTemporaire->id);
-                    $O_utilisateur->changeLogin($O_utilisateurTemporaire->login);
-                    $O_utilisateur->changeAdmin($O_utilisateurTemporaire->admin);
-
-                    return $O_utilisateur;
-                }
+             if (is_object($O_utilisateurEnBase)) {
+                if(!$O_utilisateur = $this->hydrater($O_utilisateurEnBase))throw new Exception("La classe mappée " . $this->_S_classeMappee . " est introuvable.");
+                return $O_utilisateur;
             }
-
-            throw new LogicException ('La classe "' . $this->_S_classeMappee . '" n\'existe pas');
+            else 
+            {
+            	throw new Exception("Une erreur s'est produite avec l'utilisateur d'identifiant " . $I_identifiant);
+            }
         }
         else
         {
@@ -80,14 +77,14 @@ class UtilisateurMapper extends SqlDataMapper
         if ($A_utilisateur = $this->_O_connexion->projeter($S_requete, $A_paramsRequete))
         {
             // on sait donc qu'on aura 1 seul enregistrement dans notre tableau, car login est unique
-            $O_utilisateurTemporaire = $A_utilisateur[0];
- 
-            if (class_exists($this->_S_classeMappee)) {
-                $O_utilisateur = new $this->_S_classeMappee;
-                $O_utilisateur->changeIdentifiant($O_utilisateurTemporaire->id);
-                $O_utilisateur->changeLogin($O_utilisateurTemporaire->login);
-                $O_utilisateur->changeMotDePasse($O_utilisateurTemporaire->motdepasse);
-                $O_utilisateur->changeAdmin($O_utilisateurTemporaire->admin);
+        	$O_utilisateurEnBase = $A_utilisateur[0];
+
+             if (is_object($O_utilisateurEnBase)) {
+                if(!$O_utilisateur = $this->hydrater($O_utilisateurEnBase))throw new Exception("La classe mappée " . $this->_S_classeMappee . " est introuvable.");
+            }
+            else 
+            {
+            	throw new Exception("Une erreur est survenur avec l'utilisateur de login " . $S_login);
             }
 
             // je regarde si un propriétaire est relié à mon compte utilisateur
@@ -114,28 +111,68 @@ class UtilisateurMapper extends SqlDataMapper
             throw new Exception ("Il n'existe pas d'utilisateur pour ce login");
         }
     }
+    
+    public function creer (Utilisateur $O_utilisateur)
+    {
+    	if (!$O_utilisateur->donneLogin() || !$O_utilisateur->donneMotDePasse())
+    	{
+    		throw new Exception ("Impossible de créer l'utilisateur, des informations sont manquantes.");
+    	}
+    
+    	$S_login = $O_utilisateur->donneLogin();
+    	$S_motDePasse = $O_utilisateur->donneMotDePasse();
+    	$B_estAdmin = $O_utilisateur->estAdministrateur();
+    	$I_idProprietaire = null;
+    
+    	if ($O_utilisateur->estProprietaire()) {
+    		$I_idProprietaire = $O_utilisateur->donneProprietaire()->donneIdentifiant();
+    	}
+    
+    	$S_requete = "INSERT INTO " . $this->_S_nomTable . " (login, motdepasse, admin, id_proprietaire) VALUES (?, ?, ?, ?)";
+    	$A_paramsRequete = array($S_login, $S_motDePasse, $B_estAdmin, $I_idProprietaire);
+    
+    	// j'insère en table et inserer me renvoie l'identifiant de mon nouvel enregistrement...je le stocke
+    	try
+    	{
+    		$O_utilisateur->changeIdentifiant($this->_O_connexion->inserer($S_requete, $A_paramsRequete));
+    	}
+    	catch (Exception $O_exception)
+    	{
+    		if($O_exception->getCode() == 23000 )
+    		{
+    			throw new Exception("L'utilisateur " . $O_utilisateur->donneLogin() . " existe déjà.");
+    		}
+    		else
+    		{
+    			throw new Exception($O_exception->getMessage());
+    		}
+    	}
+    
+    }
 
     public function actualiser (Utilisateur $O_utilisateur)
     {
         if (!is_null($O_utilisateur->donneIdentifiant()))
         {
-            if (!$O_utilisateur->donneLogin())
-            {
-                throw new Exception ("Impossible de lettre à jour l'utilisateur, des informations sont manquantes");
-            }
-
-            $S_login = $O_utilisateur->donneLogin();
-            $I_identifiant = $O_utilisateur->donneIdentifiant();
-
-            $S_requete   = "UPDATE " . $this->_S_nomTable . " SET login = ? WHERE id = ?";
-            $A_paramsRequete = array($S_login, $I_identifiant);
-
-            $this->_O_connexion->modifier($S_requete, $A_paramsRequete);
-
-            return true;
+        	throw new Exception("Impossible de trouver l'identifiant de l'utilisateur à modifier.");
+        }
+        if (!$O_utilisateur->donneLogin())
+        {
+            throw new Exception ("Impossible de lettre à jour l'utilisateur, des informations sont manquantes");
         }
 
-        return false;
+        $S_login = $O_utilisateur->donneLogin();
+        $I_identifiant = $O_utilisateur->donneIdentifiant();
+
+        $S_requete   = "UPDATE " . $this->_S_nomTable . " SET login = ? WHERE id = ?";
+        $A_paramsRequete = array($S_login, $I_identifiant);
+
+        if(false===$this->_O_connexion->modifier($S_requete, $A_paramsRequete))
+        {
+        	throw new Exception("Impossible de modifier l'utilisateur d'identifiant " . $I_identifiant);
+        }
+
+        return true;
     }
 
     // Attention : dans notre schéma de base de données, nous avons mis une clause de suppression de type
@@ -146,43 +183,30 @@ class UtilisateurMapper extends SqlDataMapper
     {
         if (!is_null($O_utilisateur->donneIdentifiant()))
         {
-            // il me faut absolument un identifiant pour faire une suppression
-            $S_requete   = "DELETE FROM " . $this->_S_nomTable . " WHERE id = ?";
-            $A_paramsRequete = array($O_utilisateur->donneIdentifiant());
-
-            // si modifier echoue elle me renvoie false, si aucun enregistrement n'est supprimé, elle renvoie zéro
-            // attention donc à bien utiliser l'égalité stricte ici !
-            if (false === $this->_O_connexion->modifier($S_requete, $A_paramsRequete))
-            {
-                throw new Exception ("Impossible de supprimer l'utilisateur d'identifiant " . $O_utilisateur->donneIdentifiant());
-            }
-
-            return true;
+        	throw new Exception("Impossible de trouver l'identifiant de l'utilisateur à supprimer.");
         }
+        // il me faut absolument un identifiant pour faire une suppression
+        $S_requete   = "DELETE FROM " . $this->_S_nomTable . " WHERE id = ?";
+        $A_paramsRequete = array($O_utilisateur->donneIdentifiant());
 
-        return false;
-    }
-
-    public function creer (Utilisateur $O_utilisateur)
-    {
-        if (!$O_utilisateur->donneLogin())
+        // si modifier echoue elle me renvoie false, si aucun enregistrement n'est supprimé, elle renvoie zéro
+        // attention donc à bien utiliser l'égalité stricte ici !
+        if (false === $this->_O_connexion->modifier($S_requete, $A_paramsRequete))
         {
-            throw new Exception ("Impossible de créer l'utilisateur, des informations sont manquantes");
+            throw new Exception ("Impossible de supprimer l'utilisateur d'identifiant " . $O_utilisateur->donneIdentifiant());
         }
-
-        $S_login = $O_utilisateur->donneLogin();
-        $S_motDePasse = $O_utilisateur->donneMotDePasse();
-        $B_estAdmin = $O_utilisateur->estAdministrateur();
-        $I_idProprietaire = null;
-
-        if ($O_utilisateur->estProprietaire()) {
-            $I_idProprietaire = $O_utilisateur->donneProprietaire()->donneIdentifiant();
-        }
-
-        $S_requete = "INSERT INTO " . $this->_S_nomTable . " (login, motdepasse, admin, id_proprietaire) VALUES (?, ?, ?, ?)";
-        $A_paramsRequete = array($S_login, $S_motDePasse, $B_estAdmin, $I_idProprietaire);
-
-        // j'insère en table et inserer me renvoie l'identifiant de mon nouvel enregistrement...je le stocke
-        $O_utilisateur->changeIdentifiant($this->_O_connexion->inserer($S_requete, $A_paramsRequete));
+        return true;
+    }
+    
+    private function hydrater($O_utilisateurEnBase)
+    {
+    	if(!class_exists($this->_S_classeMappee)) return false;
+    	
+    	$O_utilisateur = new $this->_S_classeMappee;
+    	$O_utilisateur->changeIdentifiant($O_utilisateurEnBase->id);
+    	$O_utilisateur->changeLogin($O_utilisateurEnBase->login);
+    	$O_utilisateur->changeMotDePasse($O_utilisateurEnBase->motdepasse);
+    	$O_utilisateur->changeAdmin($O_utilisateurEnBase->admin);
+    	return $O_utilisateur;
     }
 }

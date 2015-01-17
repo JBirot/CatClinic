@@ -53,7 +53,7 @@ final class Controleur
         $this->_A_urlDecortique['controleur'] . " n'est pas une action valide.");
         }
         
-        $B_called = call_user_func_array(array(new $this->_A_urlDecortique['controleur'],
+        $B_called = call_user_func_array(array(new $this->_A_urlDecortique['controleur']($this->_A_urlDecortique['action']),
         $this->_A_urlDecortique['action']), array($this->_A_urlParametres));
 
         if (false === $B_called) {

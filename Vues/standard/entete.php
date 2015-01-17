@@ -6,6 +6,9 @@ if (Authentification::estConnecte())
     
     if (Authentification::estAdministrateur()) {
         $A_liens['/utilisateur/liste'] = 'Utilisateurs';
+        $A_liens['/article/liste'] = 'Articles';
+        $A_liens['/categorie/liste'] = 'Catégories';
+        $A_liens['/auteur/liste'] = 'Auteurs';
     }
 
     $A_liens['/logout'] = 'Déconnexion';

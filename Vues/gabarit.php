@@ -7,6 +7,7 @@
 </head>
 <body>
     <div id="header"><?php Vue::montrer('standard/entete'); ?></div>
+    <div id="messages"><?php Vue::montrer('standard/erreurs'); ?></div>
     <div id="body">
        <?php echo $A_vue['body'] ?>
     </div>

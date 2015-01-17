@@ -1,6 +1,6 @@
 <?php
 
-class CategorieMappe extends SqlDataMapper
+class CategorieMapper extends SqlDataMapper
 {
 	public function __construct(Connexion $O_connexion)
 	{
@@ -9,9 +9,10 @@ class CategorieMappe extends SqlDataMapper
 		$this->_O_connexion = $O_connexion;
 	}
 	
-	public function trouverParIntervalle ($I_debut, $I_fin)
+	public function trouverParIntervalle ($I_debut = NULL, $I_fin = NULL)
     {
         $S_requete = 'SELECT id, titre FROM ' . $this->_S_nomTable;
+        $A_paramsRequete = null;
 
         if (!is_null($I_debut) && !is_null($I_fin))
         {
@@ -24,16 +25,8 @@ class CategorieMappe extends SqlDataMapper
 
         foreach ($this->_O_connexion->projeter($S_requete, $A_paramsRequete) as $O_categorieEnBase)
         {
-            // $O_categorieEnBase est un objet de la classe prédéfinie StdClass
-
-            $O_categorie = new Categorie ();
-
-            // Je convertis mon objet StdClass trop "vague" en objet métier categorie !
-            $O_categorie->changeIdentifiant ($O_categorieEnBase->id);
-            $O_categorie->changeTitre ($O_categorieEnBase->titre);
-
-            // A ce stade j'ai réalisé en quelque sorte une copie de mon objet StdClass en un objet métier de mon application
-            $A_categories[] = $O_categorie;
+            if($O_categorie = $this->hydrater($O_categorieEnBase)){
+            $A_categories[] = $O_categorie;}
         }
 
         // J'ai crée un tableau d'objets categorie...je le renvoie !
@@ -50,23 +43,16 @@ class CategorieMappe extends SqlDataMapper
     		
     		if($A_categorie = $this->_O_connexion->projeter($S_requete,$A_paramsRequete))
     		{
-    			$O_categorieTemporaire = $A_categorie[0];
+    			$O_categorieEnBase = $A_categorie[0];
     			
-    			if(is_object($O_categorieTemporaire))
+    			if(is_object($O_categorieEnBase))
     			{
-    				if(class_exists($this->_S_classeMappee))
-    				{
-    					$O_categorie = new $this->_S_classeMappee;
-    					
-    					$O_categorie->changeIdentifiant($O_categorieTemporaire->id);
-    					$O_categorie->changeTitre($O_categorieTemporaire->titre);
-    					
-    					return $O_categorie;
-    				}
+    				$O_categorie = $this->hydrater($O_categorieEnBase);    					
+    				return $O_categorie;    				
     			}
 				else 
 				{
-					throw new Exception("Une erreur s'est produite pour la cat�gorie d'identifiant '$I_identifiant'");
+					throw new Exception("Une erreur s'est produite pour la catégorie d'identifiant '$I_identifiant'");
 				}
     		}
     		else 
@@ -112,7 +98,7 @@ class CategorieMappe extends SqlDataMapper
     			throw new Exception("Impossible de mettre à jour la catégorie d'identifiant " . $O_categorie->donneIdentifiant());
     		}
     		
-    		$S_titre = $O_categorie->donneIdentifiant();
+    		$S_titre = $O_categorie->donneTitre();
     		$I_identifiant = $O_categorie->donneIdentifiant();
     		
     		$S_requete = "UPDATE " . $this->_S_nomTable . " SET titre = ? WHERE id = ?";
@@ -135,12 +121,24 @@ class CategorieMappe extends SqlDataMapper
     		
     		if(false=== $this->_O_connexion->modifier($S_requete, $A_paramsRequete))
     		{
-    			throw new Exception("Impossible de supprimer le chat d'identifiant " . $O_chat->donneIdentifiant());
+    			throw new Exception("Impossible de supprimer la catégorie d'identifiant " . $O_categorie->donneIdentifiant());
     		}
     		
     		return true;
     	}
     	
     	return false;
+    }
+    
+    private function hydrater($O_categorieEnBase)
+    {    	
+    	if(!class_exists($this->_S_classeMappee)) return false;
+    	
+    	$O_categorie = new $this->_S_classeMappee;
+
+    	$O_categorie->changeIdentifiant ($O_categorieEnBase->id);
+    	$O_categorie->changeTitre ($O_categorieEnBase->titre);
+
+    	return $O_categorie;
     }
 }
