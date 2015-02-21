@@ -50,20 +50,30 @@
  		return $this->_A_champs[$S_nomDuChamp]->donneErreur();
  	}
  	
- 	public function donneTableErreurs()
+ 	public function donneTableErreurs($B_reset = FALSE)
  	{
+ 		//Si l'option est true on reset la table des erreurs
+ 		$this->_A_erreurs = $B_reset ? null : $this->_A_erreurs;
  		return $this->_A_erreurs;
  	}
  	
- 	public function donneErreurs()
+ 	public function donneErreurs($B_reset = FALSE)
  	{
- 		$S_erreurs = null;
- 		
- 		//TODO : explode du tableau d'erreurs pour en faire une chaîne de caractères.
- 		foreach($this->_A_erreurs as $S_erreur)
+ 		//Si la table des erreurs est vide, le formulaire n'est pas vérifié
+ 		if(is_null($this->_A_erreurs))
  		{
- 			$S_erreurs .=  $S_erreur . "</br>";
+ 			return "Le formulaire n'a pas été vérifié !";	
  		}
+ 		
+ 		//Si la table n'est pas vide, on affiche les erreurs
+ 		$S_erreurs = null;
+ 		if(count($this->_A_erreurs)>0)
+ 		{	
+ 			$S_erreurs = '<ul><li>'.implode('</li><li>', $this->_A_erreurs).'</li></ul>';
+ 		}
+ 		
+ 		//Si l'option est true on reset la table des erreurs
+ 		$this->_A_erreurs = $B_reset ? null : $this->_A_erreurs;
  		
  		return $S_erreurs;
  	}
@@ -72,10 +82,8 @@
  	
  	//VALIDATION
  	public function estValide()
- 	{
- 		//TODO : sauvegarde des informations valides pour éviter la répétition de la saisie.
- 		//On reset les erreurs avant de commencer la validation.
- 		$this->_A_erreurs = null;
+ 	{	//On reset les erreurs avant de commencer la validation.
+ 		$this->_A_erreurs = array();
  		
  		if(null == $this->_A_champs)
  		{
@@ -85,18 +93,13 @@
  		
  		foreach($this->_A_champs as $O_champ)
  		{
- 			if(!$O_champ->estValide()&&$O_champ->estObligatoire())
+ 			if(!$O_champ->estValide())
  			{
  				$this->_A_erreurs[$O_champ->donneNom()] = $O_champ->donneErreur();
  			}
  		}
  		
- 		if(null == $this->_A_erreurs)
- 		{
- 			return true;
- 		}
- 		
- 		return false;
+ 		return empty($this->_A_erreurs);
  	}
  	
  }

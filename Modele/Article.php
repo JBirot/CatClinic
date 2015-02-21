@@ -12,7 +12,7 @@ final class Article extends ObjetMetier
 	
 	private $_S_contenu;
 	
-	private $_B_enLigne;
+	private $_I_enLigne;
 	
 	private $_O_date;
 	
@@ -24,13 +24,11 @@ final class Article extends ObjetMetier
 	
 	public function changeCategorie(Categorie $O_categorie)
 	{
-		//TODO : Validation de la catégorie ?
 		$this->_O_categorie = $O_categorie;
 	}
 	
 	public function changeAuteur(Auteur $O_auteur)
 	{
-		//TODO : Validation de l'auteur ?
 		$this->_O_auteur = $O_auteur;
 	}
 	
@@ -49,17 +47,18 @@ final class Article extends ObjetMetier
 		$this->_O_date = $O_date;
 	}
 	
-	public function changeEnLigne($B_enLigne)
+	public function changeEnLigne($I_enLigne)
 	{
-		$this->_B_enLigne = $B_enLigne;
+		$this->_I_enLigne = $I_enLigne;
 	}
 	
-	public function hydrater($S_titre, $S_contenu, $O_categorie, $O_auteur)
+	public function hydrater($S_titre, $S_contenu, $O_categorie, $O_auteur,$I_enLigne)
 	{
 		$this->_S_titre = $S_titre;
 		$this->_S_contenu = $S_contenu;
 		$this->_O_categorie = $O_categorie;
 		$this->_O_auteur = $O_auteur;
+		$this->_I_enLigne = $I_enLigne;
 	}
 	
 	//Getters
@@ -119,12 +118,12 @@ final class Article extends ObjetMetier
 	}
 	public function estEnLigne()
 	{
-		return $this->_B_enLigne;
+		return $this->_I_enLigne;
 	}
 	
 	//Validation
 	public function estValide()
 	{
-		return($this->_O_auteur->est_valide() && $this->_O_categorie->est_valide() && isset($this->_S_contenu) && isset($this->_S_titre));
+		return($this->_O_auteur->est_valide() && $this->_O_categorie->est_valide() && isset($this->_S_contenu) && isset($this->_S_titre)&&(isset($this->_I_enLigne)));
 	}
 }

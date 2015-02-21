@@ -16,7 +16,46 @@ final class ControleurCategorie
 	
 	public function defautAction()
 	{
-		BoiteAOutils::redirigerVers('categorie/liste');
+		BoiteAOutils::redirigerVers('categorie/liste/'.BoiteAOutils::recupererDepuisSession('page_categorie'));
+	}
+	
+	public function changerLimiteAction()
+	{
+		$O_formulaire = new Formulaire(array(
+				'limite_categories_new' => 'id'
+		));
+	
+		if(!$O_formulaire->estValide())
+		{
+			BoiteAOutils::stockerErreur($O_formulaire->donneErreurs());
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+	
+		BoiteAOutils::rangerDansSession('limite_categories', $O_formulaire->donneContenu('limite_categories_new'));
+		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+		return true;
+	}
+	
+	public function changerOrdreAction(Array $A_parametres)
+	{
+		if(count($A_parametres)<2)
+		{
+			BoiteAOutils::stockerErreur("Il manque des parametres pour changer le tri de la liste des catégories.");
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		$I_champ = $A_parametres[0];
+		$I_sens = $A_parametres[1];
+		if(($I_champ !== '0' && $I_champ !== '1') || ($I_sens !== '0' && $I_sens !== '1'))
+		{
+			BoiteAOutils::stockerErreur("L'un des parametres pour changer le tri de la liste des catégories est incorrect.");
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		BoiteAOutils::rangerDansSession('ordre_categories', array($I_champ,$I_sens));
+		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+		return true;
 	}
 	
 	public function listeAction(Array $A_parametres = null)
@@ -27,7 +66,10 @@ final class ControleurCategorie
 	
 		$O_listeur = new Listeur($O_categorieMapper);
 		$O_paginateur = new Paginateur($O_listeur);
-		$O_paginateur->changeLimite(Constantes::NB_MAX_ARTICLES_PAR_PAGE);
+		$I_limite = BoiteAOutils::recupererDepuisSession('limite_categories')?BoiteAOutils::recupererDepuisSession('limite_categories'):Constantes::NB_MAX_ARTICLES_PAR_PAGE;
+		$A_ordre = BoiteAOutils::recupererDepuisSession('ordre_categories');
+		$O_paginateur->changeLimite($I_limite);
+		$O_paginateur->changeOrdre($A_ordre);
 	
 		// on doit afficher puis installer la pagination
 		try 
@@ -36,10 +78,8 @@ final class ControleurCategorie
 		}
 		catch (Exception $O_exception)
 		{
-			//Si la récupération de la 1ère page de la liste échoue on repart à la base du site, autrement on revient sur la précèdente
-			$S_url = $I_page == 1 ? '' : $this->_S_urlDefaut;
 			BoiteAOutils::stockerErreur($O_exception->getMessage());
-			BoiteAOutils::redirigerVers($S_url);
+			BoiteAOutils::redirigerVers('');
 		}
 	
 		$A_pagination = $O_paginateur->paginer();
@@ -47,8 +87,74 @@ final class ControleurCategorie
 		BoiteAOutils::rangerDansSession("page_categorie", $I_page);
 	
 		//Affichage
-		Vue::montrer('articles/categories/form');
-		Vue::montrer ('articles/categories/liste', array('categories' => $A_categories, 'pagination' => $A_pagination));
+		Vue::montrer ('articles/categories/liste', array('categories' => $A_categories, 'pagination' => $A_pagination,'ordre'=>$A_ordre));
+	}
+	
+	public function validationAction()
+	{	//Recherche des champs à valider
+		if (isset($_POST['categorie_modif_all']))
+		{
+			if(isset($_POST['categorie_toMod']))
+			{
+				foreach ($_POST['categorie_toMod'] as $I_identifiant)
+				{
+					$A_ids[] = $I_identifiant;
+					$A_champs['categorie_Titre_'.$I_identifiant] = 'texte';
+				}
+			}
+		}
+		else
+		{
+			foreach($_POST as $S_inputName => $value)
+			{
+				if(preg_match("/^categorie_modif_[0-9]*/",$S_inputName ))
+				{
+					$I_identifiant = str_replace('categorie_modif_', '', $S_inputName);
+					$A_ids[] = $I_identifiant;
+					$A_champs['categorie_Titre_'.$I_identifiant] = 'texte';
+				}
+			}
+		}
+		if(!empty($A_champs))
+		{	//Recuperation des données du formulaire
+			$O_formulaire = new Formulaire($A_champs);
+			//Validation
+			if(!$O_formulaire->estValide())
+			{
+				BoiteAOutils::stockerErreur($O_formulaire->donneErreurs());
+				BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+				return false;
+			}
+			//Enregistrement en base
+			$O_categorieMapper = FabriqueDeMappers::fabriquer('categorie', Connexion::recupererInstance());
+			foreach ($A_ids as $I_identifiant)
+			{
+				try{
+					$O_categorie = $O_categorieMapper->trouverParIdentifiant($I_identifiant);
+					$O_categorie->changeTitre($O_formulaire->donneContenu('categorie_Titre_'.$I_identifiant));
+					$O_categorieMapper->actualiser($O_categorie);
+				}catch (Exception $O_exception){
+					BoiteAOutils::stockerErreur($O_exception->getMessage());
+					BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+					return false;
+				}
+			}
+			//Message de confirmation et redirection
+			BoiteAOutils::stockerMessage('Modification des catégories n°'.implode(', ', $A_ids));
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return true;
+		}
+		else
+		{	//Aucune modification
+			BoiteAOutils::stockerErreur('Aucune modification trouvée.');
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+	}
+	
+	public function creationAction()
+	{
+		Vue::montrer('/articles/categories/form');	
 	}
 	
 	public function creerAction()
@@ -166,6 +272,30 @@ final class ControleurCategorie
 		return true;
 	}
 	
+	public function suppressionAction(Array $A_parametres)
+	{
+		if(!$I_idCategorie = $A_parametres[0])
+		{
+			BoiteAOutils::stockerErreur("Impossible de trouver l'identifiant de la catégorie à supprimer.");
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		try{
+			$O_categorieMapper = FabriqueDeMappers::fabriquer('categorie', Connexion::recupererInstance());
+			$O_categorie = $O_categorieMapper->trouverParIdentifiant($I_idCategorie);
+			$A_categories = $O_categorieMapper->trouverParIntervalle();
+			
+			$O_articleMapper = FabriqueDeMappers::fabriquer('article', Connexion::recupererInstance());
+			$A_articles = $O_articleMapper->trouverParCategorie($O_categorie);
+		}catch (Exception $O_exception){
+			BoiteAOutils::stockerErreur($O_exception->getMessage());
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		
+		Vue::montrer('articles/categories/suppr',array('categorie'=>$O_categorie,'categories'=>$A_categories,'articles'=>$A_articles));
+	}
+	
 	public function supprAction(Array $A_parametres)
 	{
 		if(!$I_idCategorie = $A_parametres[0])
@@ -179,7 +309,8 @@ final class ControleurCategorie
 		{
 			$O_categorieMapper = FabriqueDeMappers::fabriquer('categorie', Connexion::recupererInstance());
 			$O_categorie = $O_categorieMapper->trouverParIdentifiant($I_idCategorie);
-			$O_categorieMapper->supprimer($O_categorie);	
+			$O_categorieRemplacement = isset($_POST['categorie_remplacement'])? $O_categorieMapper->trouverParIdentifiant($_POST['categorie_remplacement']) : null;
+			$O_categorieMapper->supprimer($O_categorie,$O_categorieRemplacement);	
 		}
 		catch (Exception $O_exception)
 		{

@@ -21,7 +21,7 @@ class ProprietaireMapperTest extends Generic_Tests_DatabaseTestCase
         self::$O_proprietaireDeTest->changePrenom('Sébastien');
 
         self::$O_chatDeTest = new Chat();
-        self::$O_chatDeTest->changeAge(99);
+        self::$O_chatDeTest->changeAge(new DateTime('1980-12-24'));
         self::$O_chatDeTest->changeNom('Patapon');
         self::$O_chatDeTest->changeTatouage('XXX000');
     }

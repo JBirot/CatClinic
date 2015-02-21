@@ -7,6 +7,11 @@ final class Authentification
         return !is_null(BoiteAOutils::recupererDepuisSession('utilisateur'));
     }
     
+    public static function estProprietaire()
+    {
+    	return !is_null((BoiteAOutils::recupererDepuisSession('utilisateur') ? BoiteAOutils::recupererDepuisSession('utilisateur')->donneProprietaire():null));
+    }
+    
     public static function estAdministrateur()
     {
         // pour qu'un utilisateur soit admin il faut qu'il soit loggué ET admin
@@ -44,6 +49,16 @@ final class Authentification
     		BoiteAOutils::redirigerVers($S_url);
     		exit;
     	}
+    }
+    
+    public static function accesProprietaire($S_url ='')
+    {	//Redirige un utilisateur s'il n'est pas proprietaire
+    	if(!self::estProprietaire())
+    	{
+    		BoiteAOutils::stockerErreur("Vous devez être propriètaire pour accéder à cette page.");
+    		BoiteAOutils::redirigerVers($S_url);
+    		exit;
+    	}    	
     }
     
     public static function authentifier (Utilisateur $O_utilisateur, $S_motdePasse, $S_algorithme = 'sha1')

@@ -1,11 +1,11 @@
-<?php 
+1<?php 
  final class FormChamp
  {
  	private $_S_nomDuChamp;
  	private $_S_contenuDuChamp;
  	private $_S_typeDuChamp;
  	private $_B_obligatoire;
- 	private $_S_erreur;
+ 	private $_A_erreurs;
  	
  	public function __construct($S_nomDuChamp, $S_typeDuChamp, $B_obligatoire = false)
  	{
@@ -16,16 +16,27 @@
  	}
  	
  	//GETTERS
- 	public function donneErreur()
+ 	public function donneErreur($B_reset = FALSE)
  	{
- 		if(!null == $this->_S_erreur)
+ 		//si la table des erreurs est 'null' le champ n'a pas été vérifié
+ 		if(is_null($this->_A_erreurs))
  		{
- 			return $this->_S_nomDuChamp . ' : ' . $this->_S_erreur;
+ 			return "Le champ '".$this->_S_nomDuChamp."' n'a pas été vérifié !";
  		}
- 		else
+ 		
+ 		$S_erreur = null;
+ 		if(count($this->_A_erreurs)>0)
  		{
- 			return null;
+ 			$S_erreur =  str_replace('_', ' ', $this->_S_nomDuChamp)  .
+ 						'<ul>'.
+ 							'<li>'.implode("</li><li>", $this->_A_erreurs).'</li>'.
+ 						'</ul>';
  		}
+ 		
+ 		//Si l'option de reset est true, on reset la table d'erreur
+ 		$this->_A_erreurs = $B_reset ? null : $this->_A_erreurs;
+ 		
+ 		return $S_erreur;
  	}
  	
  	public function donneNom()
@@ -57,13 +68,13 @@
  	
  	public function estValide()
  	{
- 		$this->_S_erreur = null;
+ 		$this->_A_erreurs = array();
  		
 		if($this->estVide())
 		{
 			if($this->_B_obligatoire)
 			{
-				$this->_S_erreur = 'Le champ est vide.';
+				$this->_A_erreurs[0] = 'Le champ est vide.';
 				return false;
 			}
 			else
@@ -73,28 +84,18 @@
 		}
 		else
 		{
-			try
+			$S_method = 'tester' . $this->_S_typeDuChamp;
+			
+			if(method_exists('FormValidation', $S_method))
 			{
-				$S_fonction = 'tester' . $this->_S_typeDuChamp;
-				
-				//TODO : verifier que la méthode existe
-				if(!FormValidation::$S_fonction($this->_S_contenuDuChamp))
-				{
-					$this->_S_erreur = "Le champ est invalide.";
-					return false;
-				}
-				else
-				{
-					return true;
-				}
+				$this->_A_erreurs = FormValidation::$S_method($this->_S_contenuDuChamp);
+				return empty($this->_A_erreurs);
 			}
-			catch(Exception $O_exception)
+			else 
 			{
-				$this->_S_erreur = 'Une erreur est survenue pendant la tentative de validation.';
+				$this->_A_erreurs[9] = $S_method . " n'est pas un type de validation.";
 				return false;
 			}
-			
-			return false;
 		}
  	}
  	

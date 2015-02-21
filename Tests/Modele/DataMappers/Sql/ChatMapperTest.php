@@ -14,7 +14,7 @@ class ChatMapperTest extends Generic_Tests_DatabaseTestCase
     {
         self::$O_connexionViaFramework = Connexion::recupererInstance('test');
         self::$O_chatDeTest = new Chat();
-        self::$O_chatDeTest->changeAge(99);
+        self::$O_chatDeTest->changeAge(new DateTime('1980-12-24'));
         self::$O_chatDeTest->changeNom('Patapon');
         self::$O_chatDeTest->changeTatouage('XXX111');
 
@@ -52,21 +52,50 @@ class ChatMapperTest extends Generic_Tests_DatabaseTestCase
         $this->assertTablesEqual($expectedTable, $queryTable);
     }
 
-    public function testSupprimerChat() {
-        self::$O_chatMapper->creer(self::$O_chatDeTest);
-        $O_chat = self::$O_chatMapper->trouverParTatouage(self::$O_chatDeTest->donneTatouage());
-        $this->assertEquals($O_chat->donneTatouage(), self::$O_chatDeTest->donneTatouage());
-        self::$O_chatMapper->supprimer(self::$O_chatDeTest);
-        $this->assertEquals(2, $this->getConnection()->getRowCount(Constantes::TABLE_CHAT));
-    }
-
-    public function testMauvaisTatouage() {
+    public function testRechercheParTatouageInvalide() {
         $this->setExpectedException('Exception');
         $O_chat = self::$O_chatMapper->trouverParTatouage(self::$O_chatDeTest->donneTatouage());
     }
+    
+    public function testRechercheParTatouageValide(){
+    	$O_chat = self::$O_chatMapper->trouverParTatouage('123ABCD');
+    	$this->assertEquals('123ABCD',$O_chat->donneTatouage());
+    }
+    
+    public function testSupprimerChat() {
+    	self::$O_chatMapper->creer(self::$O_chatDeTest);
+    	$O_chat = self::$O_chatMapper->trouverParTatouage(self::$O_chatDeTest->donneTatouage());
+    	$this->assertEquals($O_chat->donneTatouage(), self::$O_chatDeTest->donneTatouage());
+    	self::$O_chatMapper->supprimer(self::$O_chatDeTest);
+    	$this->assertEquals(2, $this->getConnection()->getRowCount(Constantes::TABLE_CHAT));
+    }
 
-    public function testMauvaisIdentifiant() {
+    public function testRechercheParIdentifiantInvalide() {
         $this->setExpectedException('Exception');
         $O_chat = self::$O_chatMapper->trouverParIdentifiant(-1);
+    }
+    
+    public function testRechercheParIdentifiantValide(){
+    	$O_chat = self::$O_chatMapper->trouverParIdentifiant(1);
+    	$this->assertEquals(1,$O_proprietaire->donneIdentifiant());
+    }
+    
+    public function testCreationMauvaisNom(){
+		$this->setExpectedException('Exception');
+		$O_chat = self::$O_chatDeTest;
+		$O_chat->changeNom('555');
+		self::$O_chatMapper->creer($O_chat);
+    }
+    
+    public function testCreationMauvaisTatouage(){
+    	$this->setExpectedException('Exception');
+    	$O_chat = self::$O_chatDeTest;
+    	$O_chat->changeTatouage('@ze-1');
+    }
+    
+    public function testCreationMauvaiseDate(){
+    	$this->setExpectedException('Exception');
+    	$O_chat = self::$O_chatDeTest;
+    	$O_chat->changeAge('Lalala');
     }
 }

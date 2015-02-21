@@ -5,27 +5,39 @@ class UtilisateurMapper extends SqlDataMapper
     public function __construct(Connexion $O_connexion)
     {
         parent::__construct(Constantes::TABLE_UTILISATEUR);
+        $this->_A_champsTriables = array('id','login','admin');
         $this->_S_classeMappee = 'utilisateur';
         $this->_O_connexion = $O_connexion;
     }
 
-    public function trouverParIntervalle ($I_debut, $I_fin) {
+    public function trouverParIntervalle ($I_debut = null, $I_fin = null,array $A_ordre = null) {
         $S_requete = 'SELECT id, login, motdepasse, admin FROM ' . $this->_S_nomTable;
-
-        if (!is_null($I_debut) && !is_null($I_fin))
+        $A_paramsReq = null;
+        
+        if($A_ordre)
         {
-            $S_requete .= ' LIMIT ?, ?';
+        	if(isset($this->_A_champsTriables[$A_ordre[0]]))
+        	{
+        		$S_sens = $A_ordre[1] ? 'DESC':'';
+        		$S_requete .= ' ORDER BY '.$this->_A_champsTriables[$A_ordre[0]].' '.$S_sens;
+        
+        	}
         }
-
-        $A_paramsRequete = array(array($I_debut, Connexion::PARAM_ENTIER), array($I_fin, Connexion::PARAM_ENTIER));
-
-        $A_utilisateurs = array ();
-
-        foreach ($this->_O_connexion->projeter($S_requete, $A_paramsRequete) as $O_utilisateurEnBase)
+        
+        if (null !== $I_debut && null !== $I_fin)
+        {
+        	$S_requete .= ' LIMIT :debut, :fin';
+        	$A_paramsReq['debut'] = array(intval($I_debut), Connexion::PARAM_ENTIER);
+        	$A_paramsReq['fin'] = array(intval($I_fin), Connexion::PARAM_ENTIER);
+        }
+        
+        $A_utilisateurs = array();
+        
+        foreach ($this->_O_connexion->projeter($S_requete, $A_paramsReq) as $O_utilisateurEnBase)
         {
             // $O_utilisateurEnBase est un objet de la classe prédéfinie StdClass
         	// Je convertis mon objet StdClass trop "vague" en objet métier Utilisateur !
-        	// TODO : si la classe mappée est incorrecte aucun message d'erreur n'est envoyé ici, seulement une variable vide.
+        	// Si la classe mappée est incorrecte aucun message d'erreur n'est envoyé ici, seulement une variable vide.
             if($O_utilisateur = $this->hydrater($O_utilisateurEnBase))
             {
             	// A ce stade j'ai réalisé en quelque sorte une copie de mon objet StdClass en un objet métier de mon application
@@ -84,7 +96,7 @@ class UtilisateurMapper extends SqlDataMapper
             }
             else 
             {
-            	throw new Exception("Une erreur est survenur avec l'utilisateur de login " . $S_login);
+            	throw new Exception("Une erreur est survenue avec l'utilisateur de login " . $S_login);
             }
 
             // je regarde si un propriétaire est relié à mon compte utilisateur
@@ -96,7 +108,7 @@ class UtilisateurMapper extends SqlDataMapper
                 // il faut récupérer ses données de propriétaire !
                 try {
                     $O_proprietaireMapper = FabriqueDeMappers::fabriquer('proprietaire', $this->_O_connexion);
-                    $O_proprietaire = $O_proprietaireMapper->trouverParIdentifiant($O_utilisateurTemporaire->id_proprietaire);
+                    $O_proprietaire = $O_proprietaireMapper->trouverParIdentifiant($O_utilisateurEnBase->id_proprietaire);
                 } catch (Exception $O_exception) {
                     $O_proprietaire = null;
                 }
@@ -152,13 +164,13 @@ class UtilisateurMapper extends SqlDataMapper
 
     public function actualiser (Utilisateur $O_utilisateur)
     {
-        if (!is_null($O_utilisateur->donneIdentifiant()))
+        if (is_null($O_utilisateur->donneIdentifiant()))
         {
         	throw new Exception("Impossible de trouver l'identifiant de l'utilisateur à modifier.");
         }
         if (!$O_utilisateur->donneLogin())
         {
-            throw new Exception ("Impossible de lettre à jour l'utilisateur, des informations sont manquantes");
+            throw new Exception ("Impossible de mettre à jour l'utilisateur, des informations sont manquantes");
         }
 
         $S_login = $O_utilisateur->donneLogin();
@@ -181,7 +193,7 @@ class UtilisateurMapper extends SqlDataMapper
 
     public function supprimer (Utilisateur $O_utilisateur)
     {
-        if (!is_null($O_utilisateur->donneIdentifiant()))
+        if (is_null($O_utilisateur->donneIdentifiant()))
         {
         	throw new Exception("Impossible de trouver l'identifiant de l'utilisateur à supprimer.");
         }
@@ -200,7 +212,7 @@ class UtilisateurMapper extends SqlDataMapper
     
     private function hydrater($O_utilisateurEnBase)
     {
-    	if(!class_exists($this->_S_classeMappee)) return false;
+    	if(!class_exists($this->_S_classeMappee)){ return false;}
     	
     	$O_utilisateur = new $this->_S_classeMappee;
     	$O_utilisateur->changeIdentifiant($O_utilisateurEnBase->id);

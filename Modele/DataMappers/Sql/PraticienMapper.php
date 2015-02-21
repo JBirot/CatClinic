@@ -6,20 +6,28 @@ class PraticienMapper extends SqlDataMapper
     {
         parent::__construct(Constantes::TABLE_PRATICIEN);
         $this->_S_classeMappee = 'Praticien';
+        $this->_A_champsTriables = array('id','nom','prenom');
         $this->_O_connexion = $O_connexion;
     }
 
-    public function trouverParIntervalle ($I_debut, $I_fin)
+    public function trouverParIntervalle ($I_debut=NULL, $I_fin=NULL, array $A_ordre = NULL)
     {
         $S_requete = 'SELECT id, nom, prenom FROM ' . $this->_S_nomTable;
-
-        if (!is_null($I_debut) && !is_null($I_fin))
-        {
-            $S_requete .= ' LIMIT ?, ?';
-        }
-
-        $A_paramsRequete = array(array($I_debut, Connexion::PARAM_ENTIER), array($I_fin, Connexion::PARAM_ENTIER));
-
+		$A_paramsRequete = null;
+		if($A_ordre)
+		{
+			if(isset($this->_A_champsTriables[$A_ordre[0]]))
+			{
+				$S_sens = $A_ordre[1]?'DESC':'';
+				$S_requete.=' ORDER BY '.$this->_A_champsTriables[$A_ordre[0]].' '.$S_sens;
+			}
+		}
+    	if(null !== $I_debut && null !== $I_fin)
+		{
+			$S_requete.= ' LIMIT :debut, :fin';
+			$A_paramsRequete['debut']=array(intval($I_debut),Connexion::PARAM_ENTIER);
+			$A_paramsRequete['fin']=array(intval($I_fin),Connexion::PARAM_ENTIER);
+		}
         $A_praticiens = array ();
 
         foreach ($this->_O_connexion->projeter($S_requete, $A_paramsRequete) as $O_praticienEnBase)

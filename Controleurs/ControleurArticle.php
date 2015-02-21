@@ -8,15 +8,94 @@ final class ControleurArticle
 	
 	public function __construct($S_method = NULL)
 	{
-		Authentification::accesAdministrateur();
-		$this->_S_urlDefaut = 'article';
-		$this->_S_urlCreation = 'article';
+		if($S_method == "pageAction" || $S_method='defautAction')
+		{
+			Authentification::accesConnecte();						
+		}
+		else
+		{
+			Authentification::accesAdministrateur();
+		}
+		$this->_S_urlDefaut = 'article/liste/'.BoiteAOutils::recupererDepuisSession('page_article');
+		$this->_S_urlCreation = 'article/creation';
 		$this->_S_urlEdition = 'article/edit/';	
 	}
 	
-	public function defautAction()
+	public function defautAction(array $A_parametres)
 	{
-		BoiteAOutils::redirigerVers('article/liste');
+		if(Authentification::estAdministrateur())
+		{
+			BoiteAOutils::redirigerVers('article/liste/'.BoiteAOutils::recupererDepuisSession('page_article'));
+		}
+		else
+		{
+			BoiteAOutils::redirigerVers('article/page/1');
+		}
+	}
+	
+	public function pageAction(array $A_parametres)
+	{
+		$I_page = empty($A_parametres)?1:$A_parametres[0];
+		$O_articleMapper = FabriqueDeMappers::fabriquer('article', Connexion::recupererInstance());
+		$O_listeur = new ListeurArticles($O_articleMapper);
+		$O_paginateur = new Paginateur($O_listeur);
+		$O_paginateur->changeLimite(Constantes::NB_MAX_ARTICLES_ENLIGNE_PAR_PAGE);
+		// on doit afficher puis installer la pagination
+		try
+		{
+			$A_articles = $O_paginateur->recupererPage($I_page);
+		}
+		catch(Exception $O_exception)
+		{
+			BoiteAOutils::stockerErreur($O_exception->getMessage());
+			BoiteAOutils::redirigerVers('erreur');
+		}
+		
+		$A_pagination = $O_paginateur->paginer('page');
+		
+		BoiteAOutils::rangerDansSession('page_article', $I_page);
+		
+		// voir ce qu'on met dans utilisateurs !
+		Vue::montrer ('articles/defaut', array('articles' => $A_articles, 'pagination' => $A_pagination));		
+	}
+	
+	public function changerLimiteAction()
+	{
+		$O_formulaire = new Formulaire(array(
+				'limite_articles_new' => 'id'
+		));
+	
+		if(!$O_formulaire->estValide())
+		{
+			BoiteAOutils::stockerErreur($O_formulaire->donneErreurs());
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+	
+		BoiteAOutils::rangerDansSession('limite_articles', $O_formulaire->donneContenu('limite_articles_new'));
+		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+		return true;
+	}
+	
+	public function changerOrdreAction(Array $A_parametres)
+	{
+		if(count($A_parametres)<2)
+		{
+			BoiteAOutils::stockerErreur("Il manque des parametres pour changer le tri de la liste des articles.");
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		$I_champ = $A_parametres[0];
+		$I_sens = $A_parametres[1];
+		if($I_champ<0 || $I_champ >5 ||	($I_sens !== '0' && $I_sens !== '1'))
+		{
+			BoiteAOutils::stockerErreur("L'un des parametres pour changer le tri de la liste des articles est incorrect.");
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		BoiteAOutils::rangerDansSession('ordre_articles', array($I_champ,$I_sens));
+		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+		return true;
 	}
 	
 	public function listeAction(array $A_parametres)
@@ -27,7 +106,10 @@ final class ControleurArticle
 	
 		$O_listeur = new Listeur($O_articleMapper);
 		$O_paginateur = new Paginateur($O_listeur);
-		$O_paginateur->changeLimite(Constantes::NB_MAX_ARTICLES_PAR_PAGE);
+		$I_limite = BoiteAOutils::recupererDepuisSession('limite_articles') ? BoiteAOutils::recupererDepuisSession('limite_articles') : Constantes::NB_MAX_ARTICLES_PAR_PAGE;
+		$O_paginateur->changeLimite($I_limite);
+		$A_ordre = BoiteAOutils::recupererDepuisSession('ordre_articles');
+		$O_paginateur->changeOrdre($A_ordre);
 	
 		// on doit afficher puis installer la pagination
 		try
@@ -36,34 +118,99 @@ final class ControleurArticle
 		}
 		catch(Exception $O_exception)
 		{
-			//Si la récupération de la 1ère page de la liste échoue on repart à la base du site, autrement on revient sur la précèdente
-			$S_url = $I_page == 1 ? '' : $this->_S_urlDefaut;
 			BoiteAOutils::stockerErreur($O_exception->getMessage());
-			BoiteAOutils::redirigerVers($S_url);
+			BoiteAOutils::redirigerVers('');
 		}
 		
 		$A_pagination = $O_paginateur->paginer();
 		
 		BoiteAOutils::rangerDansSession('page_article', $I_page);
-		
-		//récupération des catégories et des auteurs
+	
+		// voir ce qu'on met dans utilisateurs !
+		Vue::montrer ('articles/liste', array('articles' => $A_articles, 'pagination' => $A_pagination,'ordre'=>$A_ordre));
+	}
+	
+	public function validationAction()
+	{	//Recherche des champs à valider
+		if (isset($_POST['article_modif_all']))
+		{
+			if(isset($_POST['article_toMod']))
+			{
+				foreach ($_POST['article_toMod'] as $I_identifiant)
+				{
+					$A_ids[] = $I_identifiant;
+					$A_champs['article_Titre_'.$I_identifiant] = 'texte';
+				}
+			}
+		}
+		else
+		{
+			foreach($_POST as $S_inputName => $value)
+			{
+				if(preg_match("/^article_modif_[0-9]*/",$S_inputName ))
+				{
+					$I_identifiant = str_replace('article_modif_', '', $S_inputName);
+					$A_ids[] = $I_identifiant;
+					$A_champs['article_Titre_'.$I_identifiant] = 'texte';
+				}
+			}
+		}
+		if(!empty($A_champs))
+		{	//Recuperation des données
+    		$O_formulaire = new Formulaire($A_champs);
+    		//Validation des données
+    		if(!$O_formulaire->estValide())
+    		{
+    			BoiteAOutils::stockerErreur($O_formulaire->donneErreurs());
+    			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    			return false;
+    		}
+    		//Enregistrement en base
+    		$O_articleMapper = FabriqueDeMappers::fabriquer('article', Connexion::recupererInstance());
+    		foreach ($A_ids as $I_identifiant)
+    		{
+    			try{
+    				$O_article = $O_articleMapper->trouverParIdentifiant($I_identifiant);
+    				$O_article->changeTitre($O_formulaire->donneContenu('article_Titre_'.$I_identifiant));
+    				$O_article->changeEnLigne((isset($_POST['article_En_ligne_'.$I_identifiant])?'1':'0'));
+    				$O_articleMapper->actualiser($O_article);
+    			}catch (Exception $O_exception){
+    				BoiteAOutils::stockerErreur($O_exception->getMessage());
+    				BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    				return false;
+    			}
+    		}
+    		//Message de confirmation et redirection
+    		BoiteAOutils::stockerMessage('Modification des articles n°'.implode(', ', $A_ids));
+    		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    		return true;			
+		}
+		else
+		{
+			BoiteAOutils::stockerErreur('Aucune modification trouvée.');
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+	}
+	
+	public function creationAction()
+	{
 		try 
 		{
 			$O_categorieMapper = FabriqueDeMappers::fabriquer('categorie', Connexion::recupererInstance());
-			$A_categories = $O_categorieMapper->trouverParIntervalle(null,null);
+			$A_categories = $O_categorieMapper->trouverParIntervalle();
+			
 			$O_auteurMapper = FabriqueDeMappers::fabriquer('auteur', Connexion::recupererInstance());
-			$A_auteurs = $O_auteurMapper->trouverParIntervalle(null,null);	
+			$A_auteurs = $O_auteurMapper->trouverParIntervalle();
 		}
 		catch (Exception $O_exception)
 		{
 			BoiteAOutils::stockerErreur($O_exception->getMessage());
-			BoiteAOutils::redirigerVers('');
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
 			return false;
 		}
-	
-		// voir ce qu'on met dans utilisateurs !
-		Vue::montrer ('articles/form', array('categories' => $A_categories, 'auteurs' => $A_auteurs));
-		Vue::montrer ('articles/liste', array('articles' => $A_articles, 'pagination' => $A_pagination));
+		
+		Vue::montrer('articles/form', array('categories' => $A_categories, 'auteurs' => $A_auteurs));	
 	}
 	
 	public function creerAction()
@@ -111,7 +258,8 @@ final class ControleurArticle
 		$O_article->hydrater(	$O_formulaire->donneContenu('article_nouveau_titre'),
 								$O_formulaire->donneContenu('article_nouveau_contenu'),
 								$O_categorie,
-								$O_auteur	);
+								$O_auteur,
+								0);
 		//Enregistrement dans la base
 		try 
 		{
@@ -253,6 +401,31 @@ final class ControleurArticle
 		BoiteAOutils::stockerMessage("L'article d'identifiant ".$I_idArticle." a bien été modifié.");
 		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
 		return true;
+	}
+	
+	public function suppressionAction(array $A_parametres)
+	{
+		if(!$I_idAuteur = $A_parametres[0])
+		{	//L'identifiant est absent
+			//On prépare l'affichage de l'erreur et redirige l'utilisateur
+			BoiteAOutils::stockerErreur("Impossible de trouver l'identifiant de l'article à supprimer.");
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		try
+		{
+			$O_articleMapper = FabriqueDeMappers::fabriquer('article', Connexion::recupererInstance());
+			$O_article =  $O_articleMapper->trouverParIdentifiant($I_idAuteur);
+		}
+		catch(Exception $O_exception)
+		{
+			//L'identifiant ne correspond pas
+			BoiteAOutils::stockerErreur($O_exception->getMessage());
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+	
+		Vue::montrer('articles/suppr', array('article'=>$O_article));
 	}
 	
 	public function supprAction(Array $A_parametres)

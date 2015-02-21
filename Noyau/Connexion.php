@@ -29,7 +29,7 @@ class Connexion
                         ';dbname=' . $A_params['basededonnees'],
                         $A_params['utilisateur'],
                         $A_params['motdepasse'],
-                        array(PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8"));
+                        array(1002 => "SET NAMES utf8"));
 
             $this->_O_connexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 

@@ -13,9 +13,9 @@ class Listeur implements ListeurInterface {
         return $this->_O_mapper->recupererNbEnregistrements();
     }
     
-    public function lister ($I_debut = null, $I_fin = null)
+    public function lister ($I_debut = null, $I_fin = null, $A_ordre = NULL)
     {
-   		return $this->_O_mapper->trouverParIntervalle($I_debut, $I_fin);
+   		return $this->_O_mapper->trouverParIntervalle($I_debut, $I_fin, $A_ordre);
     }
     
     public function recupererCible()

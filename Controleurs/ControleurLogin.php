@@ -14,30 +14,24 @@ final class ControleurLogin
     
     public function validationAction()
     {
-        // Ici la vérification des données entrées par l'utilisateur est inexistante
-        // Regardez du côté de http://php.net/manual/fr/function.filter-var.php
+        //Reception et vérifications des données du formulaire
+        $O_formulaire = new Formulaire(array(
+        	'identifiant'=>	'Login',
+        	'mot_de_passe' => 'Pwd'
+        ));
+        
+        if(!$O_formulaire->estValide())
+        {
+        	BoiteAOutils::stockerErreur($O_formulaire->donneErreurs());
+        	BoiteAOutils::redirigerVers('');
+        	return false;
+        }
 
-        $S_login      = isset($_POST['login']) ? $_POST['login'] : null;
-        $S_motdepasse = isset($_POST['motdepasse']) ? $_POST['motdepasse'] : null;
+        $S_login      = $O_formulaire->donneContenu('identifiant');
+        $S_motdepasse = $O_formulaire->donneContenu('mot_de_passe');
 
         // on va mémoriser l'identifiant de l'utilisateur, il n'aura pas à le retaper
         BoiteAOutils::rangerDansSession('login', $S_login);
-
-        if (null == $S_login) {
-            // On positionne le message d'erreur qui sera affiché
-            $S_erreur = 'L\'identifiant est vide.';
-            BoiteAOutils::stockerErreur($S_erreur);
-            // On redirige, le message s'affichera dans la zone prévue à cet effet
-            BoiteAOutils::redirigerVers('login');
-        }
-
-        if (null == $S_motdepasse) {
-            // on va mémoriser l'identifiant de l'utilisateur, il n'aura pas à le retaper
-            BoiteAOutils::rangerDansSession('login', $S_login);
-            // On positionne le message d'erreur qui sera affiché
-            BoiteAOutils::stockerErreur('Le mot de passe est vide.');
-            BoiteAOutils::redirigerVers('login');
-        }
 
         try
         {

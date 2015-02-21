@@ -5,24 +5,35 @@ class ChatMapper extends SqlDataMapper
     public function __construct(Connexion $O_connexion)
     {
         parent::__construct(Constantes::TABLE_CHAT);
+        $this->_A_champsTriables = array('id','nom','age','tatouage'); 
         $this->_S_classeMappee = 'Chat';
         $this->_O_connexion = $O_connexion;
     }
 
-    public function trouverParIntervalle ($I_debut, $I_fin)
+    public function trouverParIntervalle ($I_debut = NULL, $I_fin=NULL,array $A_ordre = NULL)
     {
-        $S_requete = 'SELECT id, nom, age, tatouage FROM ' . $this->_S_nomTable;
-
-        if (!is_null($I_debut) && !is_null($I_fin))
+        $S_requete = 'SELECT * FROM ' . $this->_S_nomTable;
+        $A_paramsReq = null;
+        
+        if($A_ordre)
         {
-            $S_requete .= ' LIMIT ?, ?';
+        	if(isset($this->_A_champsTriables[$A_ordre[0]]))
+        	{
+        		$S_sens = $A_ordre[1] ? 'DESC' : '';
+        		$S_requete .= ' ORDER BY '.$this->_A_champsTriables[$A_ordre[0]].' '.$S_sens;
+        	}
         }
 
-        $A_paramsRequete = array(array($I_debut, Connexion::PARAM_ENTIER), array($I_fin, Connexion::PARAM_ENTIER));
+    	if (null !== $I_debut && null !== $I_fin)
+		{
+			$S_requete .= ' LIMIT :debut, :fin';
+			$A_paramsReq['debut'] = array(intval($I_debut), Connexion::PARAM_ENTIER);
+			$A_paramsReq['fin'] = array(intval($I_fin), Connexion::PARAM_ENTIER);
+		}
 
         $A_chats = array ();
 
-        foreach ($this->_O_connexion->projeter($S_requete, $A_paramsRequete) as $O_chatEnBase)
+        foreach ($this->_O_connexion->projeter($S_requete, $A_paramsReq) as $O_chatEnBase)
         {
             // $O_chatEnBase est un objet de la classe prédéfinie StdClass
 
@@ -120,14 +131,14 @@ class ChatMapper extends SqlDataMapper
 
     public function creer (Chat $O_chat)
     {
-        if (!$O_chat->donneNom() || !$O_chat->donneAge() || !$O_chat->donneTatouage())
+        if (!$O_chat->donneNom() || !$O_chat->donneDate() || !$O_chat->donneTatouage())
         {
             throw new Exception ("Impossible d'enregistrer le chat, des informations sont manquantes");
         }
 
         $S_tatouage = $O_chat->donneTatouage();
         $S_nom = $O_chat->donneNom();
-        $I_age = $O_chat->donneAge();
+        $I_age = $O_chat->donneDate();
 
         $S_requete = "INSERT INTO " . $this->_S_nomTable . " (nom, age, tatouage) VALUES (?, ?, ?)";
         $A_paramsRequete = array($S_nom, $I_age, $S_tatouage);
@@ -144,14 +155,14 @@ class ChatMapper extends SqlDataMapper
     {
         if (null != $O_chat->donneIdentifiant())
         {
-            if (!$O_chat->donneNom() || !$O_chat->donneAge() || !$O_chat->donneTatouage())
+            if (!$O_chat->donneNom() || !$O_chat->donneDate() || !$O_chat->donneTatouage())
             {
                 throw new Exception ("Impossible de mettre à jour le chat d'identifiant " . $O_chat->donneIdentifiant());
             }
 
             $S_tatouage = $O_chat->donneTatouage();
             $S_nom = $O_chat->donneNom();
-            $I_age = $O_chat->donneAge();
+            $I_age = $O_chat->donneDate();
             $I_identifiant = $O_chat->donneIdentifiant();
 
             $S_requete = "UPDATE " . $this->_S_nomTable . " SET nom = ?, tatouage = ?, age = ? WHERE id = ?";

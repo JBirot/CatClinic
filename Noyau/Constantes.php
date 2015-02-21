@@ -3,6 +3,7 @@
 // C'est ma classe "boite à outil", que j'utilise uniquement par des appels statiques !
 // Rappel : nous sommes dans le répertoire Core, voilà pourquoi dans realpath je "remonte d'un cran" pour faire référence
 // à la VRAIE racine de mon application
+date_default_timezone_set('Europe/Paris');
 
 final class Constantes
 {
@@ -84,13 +85,23 @@ final class Constantes
 
     // divers
 
-    const NB_MAX_UTILISATEURS_PAR_PAGE = 1;
+    const NB_MAX_UTILISATEURS_PAR_PAGE = 5;
     
-    const NB_MAX_ARTICLES_PAR_PAGE = 1;
+    const NB_MAX_ARTICLES_PAR_PAGE = 5;
     
-    const NB_MAX_CATEGORIES_PAR_PAGE = 1;
+    const NB_MAX_ARTICLES_ENLIGNE_PAR_PAGE = 5;
     
-    const NB_MAX_AUTEURS_PAR_PAGE = 1;
+    const NB_MAX_CATEGORIES_PAR_PAGE = 5;
+    
+    const NB_MAX_AUTEURS_PAR_PAGE = 5;
+    
+    const NB_MAX_CHATS_PAR_PAGE = 5;
+    
+    const NB_MAX_PRATICIENS_PAR_PAGE = 5;
+    
+    const NB_MAX_PROPRIOS_PAR_PAGE = 5;
+    
+    const NB_MAX_VISITES_PAR_PAGE = 5;
 
-    const DATE_FORMAT = 'Y-m-d H:i:s';
+    const DATE_FORMAT = 'Y-m-d H:i';
 }

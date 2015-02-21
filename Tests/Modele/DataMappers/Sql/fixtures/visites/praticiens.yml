@@ -1,0 +1,16 @@
+visite:
+  -
+    id: 1
+    id_praticien: 1
+    id_chat: 2
+    date: 2015-01-22 15:30:00
+    prix: 11.00
+    observations: "<p>R.A.S.</p>"
+  -
+    id: 2
+    id_praticien: 2
+    id_chat: 1
+    date: 2015-01-18 17:30:00
+    prix: 18.50
+    observations: "<p>Blabla bla bla</p>"
+    

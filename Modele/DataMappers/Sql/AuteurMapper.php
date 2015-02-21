@@ -2,24 +2,35 @@
 
 class AuteurMapper extends SqlDataMapper
 {
+	private $_S_tableArticle;
+	
 	public function __construct(Connexion $O_connexion)
 	{
 		parent::__construct(Constantes::TABLE_AUTEUR);
+		$this->_A_champsTriables = array('id','nom','prenom');
+		$this->_S_tableArticle = Constantes::TABLE_ARTICLE;
 		$this->_S_classeMappee = "Auteur";
 		$this->_O_connexion = $O_connexion;
 	}
 	
-	public function trouverParIntervalle($I_debut = NULL, $I_fin = NULL)
+	public function trouverParIntervalle($I_debut = NULL, $I_fin = NULL,array $A_ordre = NULL)
 	{
 		$S_requete = 'SELECT id, nom, prenom FROM ' . $this->_S_nomTable ;
 		$A_paramsRequete = null;
-		
-		if(!is_null($I_debut) && !is_null($I_fin))
+		if ($A_ordre)
 		{
-			$S_requete.= ' LIMIT ?, ?';
+			if(isset($this->_A_champsTriables[$A_ordre[0]]))
+			{
+				$S_sens = $A_ordre[1]?'DESC':'';
+				$S_requete.=' ORDER BY '.$this->_A_champsTriables[$A_ordre[0]].' '.$S_sens;
+			}
 		}
-		
-		$A_paramsRequete = array(array($I_debut,Connexion::PARAM_ENTIER), array($I_fin,Connexion::PARAM_ENTIER));		
+		if(null !== $I_debut && null !== $I_fin)
+		{
+			$S_requete.= ' LIMIT :debut, :fin';
+			$A_paramsRequete['debut']=array(intval($I_debut),Connexion::PARAM_ENTIER);
+			$A_paramsRequete['fin']=array(intval($I_fin),Connexion::PARAM_ENTIER);
+		}
 		
 		$A_auteurs = array();
 		
@@ -95,7 +106,7 @@ class AuteurMapper extends SqlDataMapper
 			throw new Exception("Impossible de mettre à jour l'auteur d'identifiant " . $O_auteur->donneIdentifiant());
 		}
 		
-		$I_identitiant = $O_auteur->donneIdentifiant();
+		$I_identifiant = $O_auteur->donneIdentifiant();
 		$S_nom = $O_auteur->donneNom();
 		$S_prenom = $O_auteur->donnePrenom();
 		
@@ -104,16 +115,29 @@ class AuteurMapper extends SqlDataMapper
 		
 		if(false===$this->_O_connexion->modifier($S_requete, $A_paramsReq))
 		{
-			throw new Exception("Impossible de modifier l'auteur d'identifiant ". $I_identitiant);
+			throw new Exception("Impossible de modifier l'auteur d'identifiant ". $I_identifiant);
 		}
 		return true;
 	}
 	
-	public function supprimer(Auteur $O_auteur)
+	public function supprimer(Auteur $O_auteur,Auteur $O_auteurRemplacement = NULL)
 	{
 		if(null == $O_auteur->donneIdentifiant())
 		{
 			throw new Exception("Impossible de trouver l'identifiant de l'auteur à supprimer.");	
+		}
+		if(isset($O_auteurRemplacement))
+		{
+			if(null===$O_auteurRemplacement->donneIdentifiant())
+			{
+				throw new Exception("Impossible de trouver l'identifiant de l'auteur de remplacement.");
+			}
+			$S_requete = "UPDATE ".$this->_S_tableArticle." SET id_auteur = ? where id_auteur = ?";
+			$A_paramsReq = array($O_auteurRemplacement->donneIdentifiant(),$O_auteur->donneIdentifiant());
+			if(false===$this->_O_connexion->modifier($S_requete, $A_paramsReq))
+			{
+				throw new Exception("Impossible de remplacer l'auteur des articles par celui d'identifiant " . $O_auteurRemplacement->donneIdentifiant().".");
+			}
 		}
 		$S_requete 	= 	"DELETE FROM " . $this->_S_nomTable . " WHERE id = ?";
 		$A_paramsReq=	array($O_auteur->donneIdentifiant());

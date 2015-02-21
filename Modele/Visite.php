@@ -44,6 +44,18 @@ final class Visite  extends ObjetMetier
     {
         $this->_O_chat = $O_chat;
     }
+    
+    public function hydrater(array $A_infos)
+    {
+    	if(count($A_infos)==5)
+    	{
+	    	$this->_O_praticien = array_shift($A_infos);
+	    	$this->_O_chat = array_shift($A_infos);
+	    	$this->_O_date = array_shift($A_infos);
+	    	$this->_F_prix = array_shift($A_infos);
+	    	$this->_S_observations = array_shift($A_infos);
+    	}
+    }
 
     // Mes accesseurs (getters)
 

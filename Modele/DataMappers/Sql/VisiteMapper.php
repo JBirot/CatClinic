@@ -5,21 +5,31 @@ class VisiteMapper extends SqlDataMapper
     public function __construct(Connexion $O_connexion)
     {
         parent::__construct(Constantes::TABLE_VISITE);
+        $this->_A_champsTriables=array('id','id_praticien','id_chat','date','prix');
         $this->_S_classeMappee = 'Visite';
         $this->_O_connexion = $O_connexion;
     }
 
-    public function trouverParIntervalle ($I_debut, $I_fin)
+    public function trouverParIntervalle ($I_debut=NULL, $I_fin=NULL,array $A_ordre = NULL)
     {
         $S_requete = 'SELECT id, id_praticien, id_chat, date, prix, observations  FROM ' . $this->_S_nomTable;
 
-        if (!is_null($I_debut) && !is_null($I_fin))
-        {
-            $S_requete .= ' LIMIT ?, ?';
-        }
-
-        $A_paramsRequete = array(array($I_debut, Connexion::PARAM_ENTIER), array($I_fin, Connexion::PARAM_ENTIER));
-
+    	$A_paramsRequete = null;
+		if ($A_ordre)
+		{
+			if(isset($this->_A_champsTriables[$A_ordre[0]]))
+			{
+				$S_sens = $A_ordre[1]?'DESC':'';
+				$S_requete.=' ORDER BY '.$this->_A_champsTriables[$A_ordre[0]].' '.$S_sens;
+			}
+		}
+		if(null !== $I_debut && null !== $I_fin)
+		{
+			$S_requete.= ' LIMIT :debut, :fin';
+			$A_paramsRequete['debut']=array(intval($I_debut),Connexion::PARAM_ENTIER);
+			$A_paramsRequete['fin']=array(intval($I_fin),Connexion::PARAM_ENTIER);
+		}
+		
         $A_visites = array ();
 
         foreach ($this->_O_connexion->projeter($S_requete, $A_paramsRequete) as $O_visiteEnBase)
@@ -172,16 +182,20 @@ class VisiteMapper extends SqlDataMapper
     {
         if (!is_null($O_visite->donneIdentifiant()))
         {
-            if (!$O_utilisateur->donneLogin())
-            {
-                throw new Exception ("Impossible de lettre à jour l'utilisateur, des informations sont manquantes");
-            }
+        	$I_identifiant = $O_visite->donneIdentifiant();
+			$S_observations = $O_visite->donneObservations();
+			$S_date = $O_visite->donneDate();
+			$F_prix = $O_visite->donnePrix();
+			$I_idPraticien = $O_visite->donnePraticien()->donneIdentifiant();
+			$I_idChat = $O_visite->donneChat()->donneIdentifiant();            
 
-            $S_login = $O_utilisateur->donneLogin();
-            $I_identifiant = $O_utilisateur->donneIdentifiant();
-
-            $S_requete   = "UPDATE " . $this->_S_nomTable . " SET login = ? WHERE id = ?";
-            $A_paramsRequete = array($S_login, $I_identifiant);
+            $S_requete   = "UPDATE " . $this->_S_nomTable . " SET id_praticien = ?, id_chat = ?, date = ?, prix = ?, observations = ? WHERE id = ?";
+            $A_paramsRequete = array(	$I_idPraticien,
+            							$I_idChat,
+            							$S_date,
+            							$F_prix,
+            							$S_observations,
+            							$I_identifiant);
 
             $this->_O_connexion->modifier($S_requete, $A_paramsRequete);
 

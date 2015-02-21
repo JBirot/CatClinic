@@ -5,10 +5,14 @@
 final class ControleurUtilisateur
 {
 	private $_S_urlDefaut;
-	
+	private $_S_urlCreation;
+	private $_S_urlEdition;
+		
 	public function __construct($S_method = null)
 	{
 		$this->_S_urlDefaut = Authentification::estAdministrateur() ? 'utilisateur':'inscription';
+		$this->_S_urlCreation = Authentification::estAdministrateur() ? 'utilisateur/creation' : 'inscription';
+		$this->_S_urlEdition = 'utilisateur/edit';
 		if($S_method != 'creerAction')
 		{
 			Authentification::accesAdministrateur();
@@ -17,7 +21,47 @@ final class ControleurUtilisateur
 	
 	public function defautAction()
 	{
-		BoiteAOutils::redirigerVers('utilisateur/liste');
+		BoiteAOutils::redirigerVers('utilisateur/liste/'.BoiteAOutils::recupererDepuisSession('page_utilisateur'));
+	}
+	
+	public function changerLimiteAction()
+	{
+		$O_formulaire = new Formulaire(array(
+			'limite_utilisateurs_new' => 'id'	
+		));
+		
+		if(!$O_formulaire->estValide())
+		{
+			BoiteAOutils::stockerErreur($O_formulaire->donneErreurs());
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		
+		BoiteAOutils::rangerDansSession('limite_utilisateurs', $O_formulaire->donneContenu('limite_utilisateurs_new'));
+		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+		return true;
+	}
+	
+	public function changerOrdreAction(Array $A_parametres)
+	{
+		if(count($A_parametres)<2)
+		{
+			BoiteAOutils::stockerErreur("Il manque des parametres pour changer le tri de la liste des utilisateurs.");
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		$I_champ = $A_parametres[0];
+		$I_sens = $A_parametres[1];
+		if($I_champ <0 || $I_champ > 2 ||
+				($I_sens !== '0' && $I_sens !== '1'))
+		{
+			BoiteAOutils::stockerErreur("L'un des parametres pour changer le tri de la liste des utilisateurs est incorrect.");
+			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+			return false;
+		}
+		BoiteAOutils::rangerDansSession('ordre_utilisateurs', array($I_champ,$I_sens));
+		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+		return true;
 	}
 	
     public function listeAction(Array $A_parametres = null)
@@ -27,9 +71,12 @@ final class ControleurUtilisateur
         
         $O_utilisateurMapper = FabriqueDeMappers::fabriquer('utilisateur', Connexion::recupererInstance());
 
-        $O_listeur = new ListeurUtilisateur($O_utilisateurMapper);
+        $I_limite = isset($_SESSION['limite_utilisateurs']) ? BoiteAOutils::recupererDepuisSession('limite_utilisateurs') : Constantes::NB_MAX_UTILISATEURS_PAR_PAGE;
+        $A_ordre = BoiteAOutils::recupererDepuisSession('ordre_utilisateurs'); 
+        $O_listeur = new Listeur($O_utilisateurMapper);
         $O_paginateur = new Paginateur($O_listeur);
-        $O_paginateur->changeLimite(Constantes::NB_MAX_UTILISATEURS_PAR_PAGE);
+        $O_paginateur->changeLimite($I_limite);
+        $O_paginateur->changeOrdre($A_ordre);
 
         // on doit afficher puis installer la pagination
         try
@@ -38,8 +85,8 @@ final class ControleurUtilisateur
         }
         catch (Exception $O_exception)
         {
-        	BoiteAOutils::stockerMessage($O_exception->getMessage());
-        	BoiteAOutils::redirigerVers($this->_S_urlDefaut);	
+        	BoiteAOutils::stockerErreur($O_exception->getMessage());
+        	BoiteAOutils::redirigerVers('');	
         }
         
         $A_pagination = $O_paginateur->paginer();
@@ -47,28 +94,92 @@ final class ControleurUtilisateur
         BoiteAOutils::rangerDansSession('page_utilisateur', $I_page);
 
         // voir ce qu'on met dans utilisateurs !
-        Vue::montrer('utilisateur/form');
-        Vue::montrer ('utilisateur/liste', array('utilisateurs' => $A_utilisateurs, 'pagination' => $A_pagination));
+        Vue::montrer ('utilisateur/liste', array('utilisateurs' => $A_utilisateurs, 'pagination' => $A_pagination, 'ordre'=>$A_ordre));
+    }
+    
+    public function validationAction()
+    {  	//Recherche des champs à valider
+    	if (isset($_POST['utilisateur_modif_all']))
+    	{
+    		if(isset($_POST['utilisateur_toMod']))
+    		{
+	    		foreach ($_POST['utilisateur_toMod'] as $I_identifiant)
+	    		{
+	    			$A_ids[] = $I_identifiant;
+	    			$A_champs['utilisateur_Login_'.$I_identifiant] = 'login'; 
+	    		}
+    		}
+    	}
+    	else
+    	{
+    		foreach($_POST as $S_inputName => $value)
+    		{
+    			if(preg_match("/^utilisateur_modif_[0-9]*/",$S_inputName ))
+    			{
+    				$I_identifiant = str_replace('utilisateur_modif_', '', $S_inputName);
+    				$A_ids[] = $I_identifiant;
+    				$A_champs['utilisateur_Login_'.$I_identifiant] = 'login';
+    			}
+    		}
+    	}
+    	if(!empty($A_champs))
+    	{	//Recuperation des données
+    		$O_formulaire = new Formulaire($A_champs);
+    		//Validation des données
+    		if(!$O_formulaire->estValide())
+    		{
+    			BoiteAOutils::stockerErreur($O_formulaire->donneErreurs());
+    			BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    			return false;
+    		}
+    		//Enregistrement en base
+    		$O_utilisateurMapper = FabriqueDeMappers::fabriquer('utilisateur', Connexion::recupererInstance());
+    		foreach ($A_ids as $I_identifiant)
+    		{
+    			try {
+	    			$O_utilisateur = $O_utilisateurMapper->trouverParIdentifiant($I_identifiant);
+	    			$O_utilisateur->changeLogin($O_formulaire->donneContenu('utilisateur_Login_'.$I_identifiant));
+	    			$O_utilisateurMapper->actualiser($O_utilisateur);
+    			}catch (Exception $O_exception){
+    				BoiteAOutils::stockerErreur($O_exception->getMessage());
+    				BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    				return false;
+    			}
+    		}
+    		//Message de confirmation et redirection
+    		BoiteAOutils::stockerMessage('Modification des utilisateurs n°'.implode(', ',$A_ids));
+    		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    		return true;
+    	}
+    	else
+    	{	//Aucune modification
+    		BoiteAOutils::stockerErreur('Aucune modification trouvée.');
+    		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    		return false;
+    	}
+    }
+    
+    public function creationAction()
+    {
+    	Vue::montrer('utilisateur/form');
     }
     
     public function creerAction()
-    {
-    	$S_url = Authentification::estAdministrateur() ? 'utilisateur' : ''; 
-    	
+    {    	
     	$O_formulaire = new Formulaire(array(
-    		'login' => 'login',
-    		'motdepasse'  => 'pwd'		
+    		'identifiant' => 'login',
+    		'mot_de_passe'  => 'pwd'		
     	));
     	
     	if(!$O_formulaire->estValide())
     	{
     		BoiteAOutils::stockerErreur($O_formulaire->donneErreurs());
-    		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    		BoiteAOutils::redirigerVers($this->_S_urlCreation);
     	}
     	
     	$O_utilisateur = new Utilisateur();
-    	$O_utilisateur->changeLogin($O_formulaire->donneContenu('login'));
-    	$O_utilisateur->changeMotDePasse(BoiteAOutils::crypterMotDePasse($O_utilisateur, $O_formulaire->donneContenu('motdepasse')));
+    	$O_utilisateur->changeLogin($O_formulaire->donneContenu('identifiant'));
+    	$O_utilisateur->changeMotDePasse(BoiteAOutils::crypterMotDePasse($O_utilisateur, $O_formulaire->donneContenu('mot_de_passe')));
     	
     	try
     	{
@@ -78,7 +189,7 @@ final class ControleurUtilisateur
     	catch(Exception $O_exception)
     	{
     		BoiteAOutils::stockerErreur($O_exception->getMessage());
-    		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    		BoiteAOutils::redirigerVers($this->_S_urlCreation);
     	}
     	
     	$S_message = Authentification::estAdministrateur() ? "L'utilisateur " . $O_utilisateur->donneLogin() . " est bien enregistré." : "Votre inscription s'est bien déroulée.";
@@ -97,6 +208,7 @@ final class ControleurUtilisateur
         {
             // l'identifiant est absent, inutile de continuer !
             // on renvoit vers l'action par défaut, en l'occurrence, la liste des utilisateurs
+            BoiteAOutils::stockerErreur("Impossible de trouver l'identifiant de l'utilisateur à modifier.");
             BoiteAOutils::redirigerVers('');
         } else
         {
@@ -108,7 +220,8 @@ final class ControleurUtilisateur
             } catch (Exception $O_exception)
             {
                 // L'identifiant passé ne correspond à rien...
-                BoiteAOutils::redirigerVers('');
+                BoiteAOutils::stockerErreur($O_exception->getMessage());
+                BoiteAOutils::redirigerVers($this->_S_urlDefaut);
             }
 
             // Si l'on est ici c'est qu'on a tout ce qu'il nous faut (un utilisateur !)
@@ -119,9 +232,23 @@ final class ControleurUtilisateur
 
     public function miseajourAction(Array $A_parametres)
     {
-        $I_identifiantUtilisateur = $A_parametres[0];
-        $S_login = $_POST['login'];
-        // TODO: vérifications sur l'input, même si PDO nettoie derrière
+        if(!$I_identifiantUtilisateur = $A_parametres[0])
+        {
+        	BoiteAOutils::stockerErreur("Impossible de trouver l'identifiant de l'utilisateur à modifier.");
+        	BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+        }
+        
+        $O_formulaire = new Formulaire(array(
+        		'login' => 'login'
+        ));
+         
+        if(!$O_formulaire->estValide())
+        {
+        	BoiteAOutils::stockerErreur($O_formulaire->donneErreurs());
+        	BoiteAOutils::redirigerVers($this->_S_urlCreation);
+        }
+        
+        $S_login = $O_formulaire->donneContenu('login');
 
         $O_utilisateurMapper = FabriqueDeMappers::fabriquer('utilisateur', Connexion::recupererInstance());
         $O_utilisateur = $O_utilisateurMapper->trouverParIdentifiant($I_identifiantUtilisateur);
@@ -135,6 +262,31 @@ final class ControleurUtilisateur
         // on redirige vers la liste !
         BoiteAOutils::redirigerVers($this->_S_urlDefaut);
     }
+    
+    public function suppressionAction(array $A_parametres)
+    {
+    	if(!$I_idAuteur = $A_parametres[0])
+    	{	//L'identifiant est absent
+    		//On prépare l'affichage de l'erreur et redirige l'utilisateur
+    		BoiteAOutils::stockerErreur("Impossible de trouver l'identifiant de l'utilisateur à supprimer.");
+    		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    		return false;
+    	}
+    	try
+    	{
+    		$O_utilisateurMapper = FabriqueDeMappers::fabriquer('utilisateur', Connexion::recupererInstance());
+    		$O_utilisateur =  $O_utilisateurMapper->trouverParIdentifiant($I_idAuteur);
+    	}
+    	catch(Exception $O_exception)
+    	{
+    		//L'identifiant ne correspond pas
+    		BoiteAOutils::stockerErreur($O_exception->getMessage());
+    		BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+    		return false;
+    	}
+    
+    	Vue::montrer('utilisateur/suppr', array('utilisateur'=>$O_utilisateur));
+    }
 
     public function supprAction(Array $A_parametres)
     {
@@ -142,8 +294,12 @@ final class ControleurUtilisateur
 
         $O_utilisateurMapper = FabriqueDeMappers::fabriquer('utilisateur', Connexion::recupererInstance());
         $O_utilisateur = $O_utilisateurMapper->trouverParIdentifiant($I_identifiantUtilisateur);
-        $O_utilisateurMapper->supprimer($O_utilisateur);
-		
+        try {
+        	$O_utilisateurMapper->supprimer($O_utilisateur);
+        }catch (Exception $O_exception){
+        	BoiteAOutils::stockerErreur($O_exception->getMessage());
+        	BoiteAOutils::redirigerVers($this->_S_urlDefaut);
+        }
         //L'identifiant ne correspondant pas forcèment au rang d'enregistrement j'ai désactivé cette partie
         /*$O_listeur = new ListeurUtilisateur($O_utilisateurMapper);
         $O_paginateur = new Paginateur($O_listeur);

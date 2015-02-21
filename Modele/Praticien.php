@@ -23,6 +23,14 @@ final class Praticien extends ObjetMetier
     {
         $this->_S_prenom = $S_prenom;
     }
+    
+    public function hydrater(array $A_infos)
+    {
+    	if(count($A_infos)==2){
+    	$this->_S_nom = array_shift($A_infos);
+    	$this->_S_prenom = array_shift($A_infos);
+    	}
+    }
 
     // Mes accesseurs (getters)
     public function donneIdentifiant ()

@@ -5,10 +5,10 @@ $S_message = BoiteAOutils::recupererDepuisSession('message',TRUE);
 
 if($S_erreur)
 {
-	print '<span class="error">' . $S_erreur . '</span>';
+	print '<span data-alert class="alert-box alert">' . $S_erreur . '<button href="#" class="close" aria-label="Close Alert">'.html_entity_decode('&times;').'</button></span>';
 }
 
 if($S_message)
 {
-	print '<span class="message">' . $S_message . '</span>';
+	print '<span data-alert class="alert-box success">' . $S_message . '<button href="#" class="close" aria-label="Close Alert">'.html_entity_decode('&times;').'</button></span>';
 }

@@ -6,6 +6,9 @@ abstract class SqlDataMapper
 {
     // le nom de la table cible en base
     protected $_S_nomTable;
+    
+    //le nom des champs pouvant servir à un tri
+    protected $_A_champsTriables = array();
 
     // l'identifiant de l'enregistrement courant (servira aux mises à jour et aux suppressions)
     protected $_I_identifiant = null;

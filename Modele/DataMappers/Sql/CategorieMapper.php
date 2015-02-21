@@ -2,28 +2,39 @@
 
 class CategorieMapper extends SqlDataMapper
 {
+	private $_S_tableArticle;
+	
 	public function __construct(Connexion $O_connexion)
 	{
 		parent::__construct(Constantes::TABLE_CATEGORIE);
+		$this->_A_champsTriables = array('id','titre');
+		$this->_S_tableArticle = Constantes::TABLE_ARTICLE;
 		$this->_S_classeMappee = 'Categorie';
 		$this->_O_connexion = $O_connexion;
 	}
 	
-	public function trouverParIntervalle ($I_debut = NULL, $I_fin = NULL)
+	public function trouverParIntervalle ($I_debut = NULL, $I_fin = NULL,array $A_ordre = NULL)
     {
         $S_requete = 'SELECT id, titre FROM ' . $this->_S_nomTable;
-        $A_paramsRequete = null;
-
-        if (!is_null($I_debut) && !is_null($I_fin))
+        $A_paramsReq = null;
+		if($A_ordre)
+		{
+			if (isset($this->_A_champsTriables[$A_ordre[0]]))
+			{
+				$S_sens = $A_ordre[1] ? 'DESC':'';
+				$S_requete .= ' ORDER BY '.$this->_A_champsTriables[$A_ordre[0]].' '.$S_sens;
+			}
+		}
+        if (null!==$I_debut && null!==$I_fin)
         {
-            $S_requete .= ' LIMIT ?, ?';
+        	$S_requete .= ' LIMIT :debut, :fin';
+        	$A_paramsReq['debut'] = array(intval($I_debut), Connexion::PARAM_ENTIER);
+        	$A_paramsReq['fin'] = array(intval($I_fin), Connexion::PARAM_ENTIER);
         }
-
-        $A_paramsRequete = array(array($I_debut, Connexion::PARAM_ENTIER), array($I_fin, Connexion::PARAM_ENTIER));
 
         $A_categories = array ();
 
-        foreach ($this->_O_connexion->projeter($S_requete, $A_paramsRequete) as $O_categorieEnBase)
+        foreach ($this->_O_connexion->projeter($S_requete, $A_paramsReq) as $O_categorieEnBase)
         {
             if($O_categorie = $this->hydrater($O_categorieEnBase)){
             $A_categories[] = $O_categorie;}
@@ -83,9 +94,16 @@ class CategorieMapper extends SqlDataMapper
     	{
     		$O_categorie->changeIdentifiant($this->_O_connexion->inserer($S_requete,$A_paramsRequete));
     	}
-    	catch (PDOException $O_Exception)
+        catch (Exception $O_exception)
     	{
-    		throw FabriqueDexceptions::fabriquer($O_exception->getCode(), $this->recupererCible());
+    		if($O_exception->getCode() == 23000 )
+    		{
+    			throw new Exception("La categorie " . $O_categorie->donneTitre() . " existe déjà.");
+    		}
+    		else
+    		{
+    			throw new Exception($O_exception->getMessage());
+    		}
     	}
     }
     
@@ -112,22 +130,35 @@ class CategorieMapper extends SqlDataMapper
     	return false;
     }
     
-    public function supprimer(Categorie $O_categorie)
+    public function supprimer(Categorie $O_categorie, Categorie $O_categorieRemplacement = null)
     {
-    	if(null != $O_categorie->donneIdentifiant())
+    	if(null === $O_categorie->donneIdentifiant())
     	{
-    		$S_requete = "DELETE FROM " . $this->_S_nomTable . " WHERE id = ?";
-    		$A_paramsRequete = array($O_categorie->donneIdentifiant());
-    		
-    		if(false=== $this->_O_connexion->modifier($S_requete, $A_paramsRequete))
-    		{
-    			throw new Exception("Impossible de supprimer la catégorie d'identifiant " . $O_categorie->donneIdentifiant());
-    		}
-    		
-    		return true;
+    		throw new Exception("Impossible de trouver l'identifiant de la catégorie à supprimer");
     	}
-    	
-    	return false;
+   		if(isset($O_categorieRemplacement))
+   		{
+   			if(null === $O_categorieRemplacement->donneIdentifiant())
+   			{
+   				throw new Exception("Impossible de trouver l'identifiant de la catégorie de remplacement.");
+   			}
+   			$S_requete = "UPDATE ".$this->_S_tableArticle." SET id_categorie = ? WHERE id_categorie = ?";
+   			$A_paramsRequete = array($O_categorieRemplacement->donneIdentifiant(),$O_categorie->donneIdentifiant());
+   			if(false=== $this->_O_connexion->modifier($S_requete, $A_paramsRequete))
+   			{
+   				throw new Exception("Impossible de remplacer la catégorie des articles afin de supprimer la catégorie d'identifiant ".$O_categorie->donneIdentifiant().".");
+   			}	
+   		}
+   		
+   		$S_requete = "DELETE FROM " . $this->_S_nomTable . " WHERE id = ?";
+   		$A_paramsRequete = array($O_categorie->donneIdentifiant());
+   		
+   		if(false=== $this->_O_connexion->modifier($S_requete, $A_paramsRequete))
+   		{
+   			throw new Exception("Impossible de supprimer la catégorie d'identifiant " . $O_categorie->donneIdentifiant());
+   		}
+  		
+   		return true;
     }
     
     private function hydrater($O_categorieEnBase)
